@@ -7,12 +7,20 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from spellchecker import SpellChecker
 import os
 
-# Load tokenizer and model
-def load_tokenizer_and_model():
+# Load Model and Tokenizer
+@st.cache_resource
+def load_resources():
     with open("tokenizer.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
     model = load_model("rnn_sentiment_model.h5")
     return tokenizer, model
+    
+# Load tokenizer and model
+#def load_tokenizer_and_model():
+ #   with open("tokenizer.pkl", "rb") as handle:
+  #      tokenizer = pickle.load(handle)
+   # model = load_model("rnn_sentiment_model.h5")
+    #return tokenizer, model
 
 tokenizer, sentiment_model = load_tokenizer_and_model()
 
