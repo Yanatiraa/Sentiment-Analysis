@@ -55,7 +55,24 @@ def main():
 
     user_choices = {}
     for feature, options in features.items():
-        user_choices[feature] = st.radio(f"{feature}:", options, index=-1)
+        user_choices[feature] = st.radio(f"{feature}:", options, index=0)
+
+    options = ["Select an option"] + options
+selected_option = st.radio(f"{feature}:", options, index=0)
+
+# Ensure valid choice
+if selected_option != "Select an option":
+    user_choices[feature] = selected_option
+
+    if len(options) > 0:
+    user_choices[feature] = st.radio(f"{feature}:", options, index=0)
+else:
+    st.error(f"No options available for {feature}.")
+
+    if len(options) == 0:
+    st.warning(f"No options available for {feature}.")
+else:
+    user_choices[feature] = st.radio(f"{feature}:", options, index=0)
 
     # Store user choices in a database (here using a CSV for simplicity)
     if st.button("Submit Feature Selection"):
