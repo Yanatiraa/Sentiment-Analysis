@@ -1,6 +1,8 @@
 streamlit
 tensorflow
-numpy
 pandas
-scikit-learn
+numpy
 nltk
+matplotlib
+seaborn
+spellchecker
