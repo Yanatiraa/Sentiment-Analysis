@@ -22,7 +22,7 @@ def load_resources():
    # model = load_model("rnn_sentiment_model.h5")
     #return tokenizer, model
 
-tokenizer, sentiment_model = load_tokenizer_and_model()
+#tokenizer, sentiment_model = load_tokenizer_and_model()
 
 # Preprocessing function
 def preprocess_text(text):
