@@ -57,13 +57,11 @@ def main():
     #for feature, options in features.items():
      #   user_choices[feature] = st.radio(f"{feature}:", options, index=0)
 
-     user_choices = {}
+     # Initialize user_choices dictionary at the same level as other statements
+    user_choices = {}
+
     for feature, options in features.items():
         user_choices[feature] = st.radio(f"{feature}:", options, index=0)
-
-    # Fix the indentation error: This block belongs to the loop above
-    if user_choices[feature] != "Select an option":  # Use the value from the loop
-        selected_option = user_choices[feature]  # No need for another options list here
         
     # Store user choices in a database (here using a CSV for simplicity)
     if st.button("Submit Feature Selection"):
