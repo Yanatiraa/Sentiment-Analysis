@@ -1,11 +1,35 @@
 import streamlit as st
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from pages.RNNmodel import load_tokenizer_and_model, preprocess_text
 import pandas as pd
+import numpy as np
+import pickle
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from spellchecker import SpellChecker
 import os
 
 # Load tokenizer and model
+def load_tokenizer_and_model():
+    with open("tokenizer.pkl", "rb") as handle:
+        tokenizer = pickle.load(handle)
+    model = load_model("rnn_sentiment_model.h5")
+    return tokenizer, model
+
 tokenizer, sentiment_model = load_tokenizer_and_model()
+
+# Preprocessing function
+def preprocess_text(text):
+    import re
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\d+', '', text)
+    return text
+
+# Spell correction function
+def correct_spelling(text):
+    spell = SpellChecker()
+    corrected = " ".join([spell.correction(word) for word in text.split()])
+    return corrected
 
 # Main Streamlit Application
 def main():
@@ -42,26 +66,27 @@ def main():
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
 
         if not positive_features.empty:
-            st.write("Recommendations for Marketing:")
+            st.write("**Recommendations for Marketing:**")
             st.write(positive_features["Choice"].value_counts().index[0])
 
         if not negative_features.empty:
-            st.write("Reminders for Improvement:")
+            st.write("**Reminders for Improvement:**")
             st.write(negative_features["Choice"].value_counts().index[0])
 
     # Section 3: Review Sentiment Analysis
     st.header("Review Sentiment Analysis")
     user_review = st.text_input("Enter your review about the product:")
     if user_review:
-        # Process the input review
-        corrected_review = preprocess_text(user_review)
+        corrected_review = correct_spelling(user_review)
+        if corrected_review != user_review:
+            st.warning(f"Did you mean: {corrected_review}?")
 
         if st.button("Analyze Sentiment"):
-            seq = tokenizer.texts_to_sequences([corrected_review])
+            seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
             padded_seq = pad_sequences(seq, maxlen=100)
             prediction = sentiment_model.predict(padded_seq)[0][0]
             sentiment = "Positive" if prediction > 0.5 else "Negative"
