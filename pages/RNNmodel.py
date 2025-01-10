@@ -89,15 +89,18 @@ def main():
         if corrected_review != user_review:
             st.warning(f"Did you mean: {corrected_review}?")
 
-        if st.button("Analyze Sentiment"):
-            try:
-                seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
-                padded_seq = pad_sequences(seq, maxlen=100)
-                prediction = model.predict(padded_seq)[0][0]
-                sentiment = "Positive" if prediction > 0.5 else "Negative"
-                st.success(f"The sentiment of your review is: {sentiment}")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+       if st.button("Analyze Sentiment"):
+    try:
+        seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
+        padded_seq = pad_sequences(seq, maxlen=100)
+        prediction = model.predict(padded_seq)[0][0]
+        st.write(f"Raw Prediction Score: {prediction}")  # Debugging output
+
+        threshold = 0.5  # Adjust this if needed
+        sentiment = "Positive" if prediction > threshold else "Negative"
+        st.success(f"The sentiment of your review is: {sentiment}")
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 
     # Section 4: Product Image Upload
     st.header("Upload Product Image")
