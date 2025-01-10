@@ -81,26 +81,26 @@ def main():
             st.write("**Reminders for Improvement:**")
             st.write(negative_features["Choice"].value_counts().index[0])
 
-    # Section 3: Review Sentiment Analysis
-    st.header("Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product:")
-    if user_review:
-        corrected_review = correct_spelling(user_review)
-        if corrected_review != user_review:
-            st.warning(f"Did you mean: {corrected_review}?")
+    # Section 3: Review Sentiment Analysis Section
+st.header("Review Sentiment Analysis")
+user_review = st.text_input("Enter your review about the product:")
+if user_review:
+    corrected_review = correct_spelling(user_review)
+    if corrected_review != user_review:
+        st.warning(f"Did you mean: {corrected_review}?")
 
-       if st.button("Analyze Sentiment"):
-    try:
-        seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
-        padded_seq = pad_sequences(seq, maxlen=100)
-        prediction = model.predict(padded_seq)[0][0]
-        st.write(f"Raw Prediction Score: {prediction}")  # Debugging output
+    if st.button("Analyze Sentiment"):
+        try:
+            seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
+            padded_seq = pad_sequences(seq, maxlen=100)
+            prediction = model.predict(padded_seq)[0][0]
+            st.write(f"Raw Prediction Score: {prediction}")  # Debugging output
 
-        threshold = 0.5  # Adjust this if needed
-        sentiment = "Positive" if prediction > threshold else "Negative"
-        st.success(f"The sentiment of your review is: {sentiment}")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+            threshold = 0.5  # Adjust this if needed
+            sentiment = "Positive" if prediction > threshold else "Negative"
+            st.success(f"The sentiment of your review is: {sentiment}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
     # Section 4: Product Image Upload
     st.header("Upload Product Image")
