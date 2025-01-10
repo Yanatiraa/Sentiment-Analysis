@@ -15,15 +15,6 @@ def load_resources():
     model = load_model("rnn_sentiment_model.h5")
     return tokenizer, model
     
-# Load tokenizer and model
-#def load_tokenizer_and_model():
- #   with open("tokenizer.pkl", "rb") as handle:
-  #      tokenizer = pickle.load(handle)
-   # model = load_model("rnn_sentiment_model.h5")
-    #return tokenizer, model
-
-#tokenizer, sentiment_model = load_tokenizer_and_model()
-
 # Preprocessing function
 def preprocess_text(text):
     import re
@@ -52,10 +43,6 @@ def main():
         "Design": ["Nice Design", "Outdated Design"],
         "Functionality": ["Suitable", "Unsuitable"]
     }
-
-    #user_choices = {}
-    #for feature, options in features.items():
-     #   user_choices[feature] = st.radio(f"{feature}:", options, index=0)
 
      # Initialize user_choices dictionary at the same level as other statements
     user_choices = {}
