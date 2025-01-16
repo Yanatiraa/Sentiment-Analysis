@@ -1,84 +1,109 @@
 import streamlit as st
-import pickle
-import tensorflow as tf
-import numpy as np
-from textblob import TextBlob
 import pandas as pd
-from PIL import Image
+import numpy as np
+import pickle
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from spellchecker import SpellChecker
+import os
 
-# Load pre-trained models
-with open("tokenizer.pkl", "rb") as file:
-    tokenizer = pickle.load(file)
-model = tf.keras.models.load_model("rnn_sentiment_model.h5")
+# Load Model and Tokenizer
+@st.cache_resource
+def load_resources():
+    with open("tokenizer.pkl", "rb") as handle:
+        tokenizer = pickle.load(handle)
+    model = load_model("rnn_sentiment_model.h5")
+    return tokenizer, model
 
-# Initialize a database (in memory for simplicity)
-database = {
-    "sizing": {"True to size": 0, "Too small": 0, "Too large": 0},
-    "quality": {"Good quality": 0, "Bad quality": 0},
-    "comfort": {"Good comfort": 0, "Discomfort": 0},
-    "design": {"Nice design": 0, "Outdated design": 0},
-    "functionality": {"Suitable": 0, "Unsuitable": 0},
-}
+# Preprocessing function
+def preprocess_text(text):
+    import re
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\d+', '', text)
+    return text
 
-# Functions for sentiment analysis
-def predict_sentiment(review):
-    sequences = tokenizer.texts_to_sequences([review])
-    padded = tf.keras.preprocessing.sequence.pad_sequences(sequences, maxlen=100)
-    prediction = model.predict(padded)
-    if prediction > 0.6:
-        return "Positive"
-    elif prediction < 0.4:
-        return "Negative"
-    else:
-        return "Neutral"
+# Spell correction function
+def correct_spelling(text):
+    spell = SpellChecker()
+    corrected = " ".join([spell.correction(word) for word in text.split()])
+    return corrected
 
-# Auto-correct functionality
-def auto_correct(text):
-    return str(TextBlob(text).correct())
+# Main Streamlit Application
+def main():
+    # Load tokenizer and model
+    tokenizer, model = load_resources()
 
-# UI Design
-st.title("Sentiment Analysis of Fashion Product Reviews")
+    st.title("Sentiment Analysis of Fashion Product Reviews")
 
-# Feature selection
-st.subheader("Select product features")
-for category, options in database.items():
-    st.write(category.capitalize())
-    for option in options.keys():
-        if st.checkbox(option):
-            database[category][option] += 1
+    # Section 1: Feature Selection
+    st.header("Feature Selection")
+    features = {
+        "Sizing": ["True to Size", "Too Small", "Too Large"],
+        "Quality": ["Good Quality", "Bad Quality"],
+        "Comfort": ["Good Comfort", "Discomfort"],
+        "Design": ["Nice Design", "Outdated Design"],
+        "Functionality": ["Suitable", "Unsuitable"]
+    }
 
-# Review input
-st.subheader("Enter review about your product")
-review = st.text_area("Write your review here")
-if st.button("Submit Review"):
-    corrected_review = auto_correct(review)
-    sentiment = predict_sentiment(corrected_review)
-    st.write(f"Corrected Review: {corrected_review}")
-    st.write(f"Sentiment: {sentiment}")
+    # Initialize user_choices dictionary at the same level as other statements
+    user_choices = {}
 
-# Image upload
-st.subheader("Insert the product image")
-uploaded_image = st.file_uploader("Choose an image file", type=["png", "jpg", "jpeg"])
-if uploaded_image is not None:
-    image = Image.open(uploaded_image)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    for feature, options in features.items():
+        user_choices[feature] = st.radio(f"{feature}:", options, index=0)
 
-# Display results
-st.subheader("Feature Summary")
-feature_summary = pd.DataFrame(database).transpose()
-st.table(feature_summary)
+    # Store user choices in a database (here using a CSV for simplicity)
+    if st.button("Submit Feature Selection"):
+        if not os.path.exists("user_choices.csv"):
+            df = pd.DataFrame(columns=["Feature", "Choice"])
+        else:
+            df = pd.read_csv("user_choices.csv")
 
-# Recommendations and reminders
-st.subheader("Recommendations and Reminders")
-positive_counts = {category: max(options, key=options.get) for category, options in database.items() if max(options.values()) > 0}
-negative_counts = {category: min(options, key=options.get) for category, options in database.items() if min(options.values()) > 0}
+        for feature, choice in user_choices.items():
+            if choice:
+                df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice]})])
+        df.to_csv("user_choices.csv", index=False)
+        st.success("Your feature choices have been recorded!")
 
-if positive_counts:
-    st.write("Recommendations for Marketing:")
-    for category, feature in positive_counts.items():
-        st.write(f"- {category.capitalize()}: Focus on {feature}.")
+    # Section 2: Recommendations and Reminders
+    st.header("Recommendations and Reminders")
+    if os.path.exists("user_choices.csv"):
+        df = pd.read_csv("user_choices.csv")
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
 
-if negative_counts:
-    st.write("Reminders for Improvement:")
-    for category, feature in negative_counts.items():
-        st.write(f"- {category.capitalize()}: Address issues with {feature}.")
+        if not positive_features.empty:
+            st.write("**Recommendations for Marketing:**")
+            st.write(positive_features["Choice"].value_counts().index[0])
+
+        if not negative_features.empty:
+            st.write("**Reminders for Improvement:**")
+            st.write(negative_features["Choice"].value_counts().index[0])
+
+    # Section 3: Review Sentiment Analysis
+    st.header("Review Sentiment Analysis")
+    user_review = st.text_input("Enter your review about the product:")
+    if user_review:
+        corrected_review = correct_spelling(user_review)
+        if corrected_review != user_review:
+            st.warning(f"Did you mean: {corrected_review}?")
+
+        if st.button("Analyze Sentiment"):
+            try:
+                seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
+                padded_seq = pad_sequences(seq, maxlen=100)
+                prediction = model.predict(padded_seq)[0][0]
+                sentiment = "Positive" if prediction > 0.5 else "Negative"
+                st.success(f"The sentiment of your review is: {sentiment}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
+    # Section 4: Product Image Upload
+    st.header("Upload Product Image")
+    uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
+    if uploaded_image:
+        st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
+
+if __name__ == "__main__":
+    main()
