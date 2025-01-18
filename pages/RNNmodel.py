@@ -8,6 +8,7 @@ from nltk.stem import SnowballStemmer
 from spellchecker import SpellChecker
 import re
 import os
+import nltk
 
 # URLs for the updated model and tokenizer
 MODEL_URL = "https://raw.githubusercontent.com/your_username/your_repo/main/xgb_model.pkl"
@@ -22,11 +23,17 @@ def load_resources():
         xgb_model = joblib.load(model_file)
     return tfidf_vectorizer, xgb_model
 
-# Preprocessing function
-nltk.download('stopwords')
-stop = set(stopwords.words('english'))
+# Download and cache stopwords
+@st.cache_resource
+def download_stopwords():
+    nltk.download('stopwords')
+    return set(stopwords.words('english'))
+
+# Initialize stopwords and stemmer
+stop = download_stopwords()
 stemmer = SnowballStemmer('english')
 
+# Preprocessing function
 def preprocess_text(text):
     text = text.lower()
     text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
