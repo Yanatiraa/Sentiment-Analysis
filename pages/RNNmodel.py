@@ -10,9 +10,9 @@ import os
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    with open("tfidf_vectorizer.pkl", "rb") as handle:
+    with open("tokenizer .pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
-    model = load_model("xgb_model.pkl")
+    model = load_model("rnn_sentiment_model.h5")
     return tokenizer, model
 
 # Preprocessing function
