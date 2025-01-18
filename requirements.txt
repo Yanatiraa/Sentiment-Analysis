@@ -6,3 +6,6 @@ nltk
 matplotlib
 seaborn
 pyspellchecker
+joblib
+scikit-learn
+xgboost
