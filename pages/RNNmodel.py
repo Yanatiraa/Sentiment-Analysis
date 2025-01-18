@@ -1,39 +1,49 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import joblib
+from urllib.request import urlopen
+from nltk.corpus import stopwords
+from nltk.stem import SnowballStemmer
 from spellchecker import SpellChecker
+import re
 import os
+
+# URLs for the updated model and tokenizer
+MODEL_URL = "https://raw.githubusercontent.com/your_username/your_repo/main/xgb_model.pkl"
+TOKENIZER_URL = "https://raw.githubusercontent.com/your_username/your_repo/main/tfidf_vectorizer.pkl"
 
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    with open("tokenizer .pkl", "rb") as handle:
-        tokenizer = pickle.load(handle)
-    model = load_model("rnn_sentiment_model.h5")
-    return tokenizer, model
+    with urlopen(TOKENIZER_URL) as tokenizer_file:
+        tfidf_vectorizer = joblib.load(tokenizer_file)
+    with urlopen(MODEL_URL) as model_file:
+        xgb_model = joblib.load(model_file)
+    return tfidf_vectorizer, xgb_model
 
 # Preprocessing function
+nltk.download('stopwords')
+stop = set(stopwords.words('english'))
+stemmer = SnowballStemmer('english')
+
 def preprocess_text(text):
-    import re
     text = text.lower()
-    text = re.sub(r'<.*?>', '', text)
-    text = re.sub(r'[^\w\s]', '', text)
-    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    text = " ".join([stemmer.stem(word) for word in text.split() if word not in stop])
     return text
 
 # Spell correction function
 def correct_spelling(text):
     spell = SpellChecker()
-    corrected = " ".join([spell.correction(word) for word in text.split()])
+    corrected = " ".join([spell.correction(word) if word not in spell.known([word]) else word for word in text.split()])
     return corrected
 
 # Main Streamlit Application
 def main():
-    # Load tokenizer and model
-    tokenizer, model = load_resources()
+    # Load TF-IDF vectorizer and XGBoost model
+    tfidf_vectorizer, xgb_model = load_resources()
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
@@ -72,8 +82,8 @@ def main():
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
 
         if not positive_features.empty:
             st.write("**Recommendations for Marketing:**")
@@ -85,7 +95,7 @@ def main():
 
     # Section 3: Review Sentiment Analysis
     st.header("Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product:")
+    user_review = st.text_area("Enter your review about the product:")
     if user_review:
         corrected_review = correct_spelling(user_review)
         if corrected_review != user_review:
@@ -93,10 +103,10 @@ def main():
 
         if st.button("Analyze Sentiment"):
             try:
-                seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
-                padded_seq = pad_sequences(seq, maxlen=100)
-                prediction = model.predict(padded_seq)[0][0]
-                sentiment = "Positive" if prediction > 0.5 else "Negative"
+                processed_review = preprocess_text(corrected_review)
+                input_tfidf = tfidf_vectorizer.transform([processed_review])
+                prediction = xgb_model.predict(input_tfidf)[0]
+                sentiment = "Good" if prediction == 1 else "Bad"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
