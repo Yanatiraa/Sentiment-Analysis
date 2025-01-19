@@ -1,28 +1,18 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle
 from spellchecker import SpellChecker
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import LabelEncoder
-from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import train_test_split
-
-# Paths to local model and tokenizer files
-LOCAL_MODEL_PATH = "xgb_model.pkl"
-LOCAL_TOKENIZER_PATH = "tfidf_vectorizer.pkl"
+import os
 
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    try:
-        tfidf_vectorizer = joblib.load(LOCAL_TOKENIZER_PATH)
-        xgb_model = joblib.load(LOCAL_MODEL_PATH)
-        return tfidf_vectorizer, xgb_model
-    except FileNotFoundError as e:
-        st.error(f"File not found: {e}")
-        return None, None
+    with open("tfidf_vectorizer.pkl", "rb") as handle:
+        tokenizer = pickle.load(handle)
+    with open("xgb_model.pkl", "rb") as handle:
+        model = pickle.load(handle)
+    return tokenizer, model
 
 # Preprocessing function
 def preprocess_text(text):
@@ -42,11 +32,7 @@ def correct_spelling(text):
 # Main Streamlit Application
 def main():
     # Load tokenizer and model
-    tfidf_vectorizer, xgb_model = load_resources()
-
-    if not tfidf_vectorizer or not xgb_model:
-        st.error("Failed to load model or tokenizer. Please check the files.")
-        return
+    tokenizer, model = load_resources()
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
@@ -85,15 +71,15 @@ def main():
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
 
         if not positive_features.empty:
-            st.write("**Recommendations for Marketing:**")
+            st.write("Recommendations for Marketing:")
             st.write(positive_features["Choice"].value_counts().index[0])
 
         if not negative_features.empty:
-            st.write("**Reminders for Improvement:**")
+            st.write("Reminders for Improvement:")
             st.write(negative_features["Choice"].value_counts().index[0])
 
     # Section 3: Review Sentiment Analysis
@@ -106,9 +92,10 @@ def main():
 
         if st.button("Analyze Sentiment"):
             try:
-                seq = tfidf_vectorizer.transform([preprocess_text(corrected_review)])
-                prediction = xgb_model.predict(seq)[0]
-                sentiment = "Positive" if prediction == 1 else "Negative"
+                preprocessed_text = preprocess_text(corrected_review)
+                features = tokenizer.transform([preprocessed_text])
+                prediction = model.predict(features)[0]
+                sentiment = "Positive" if prediction > 0.5 else "Negative"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
