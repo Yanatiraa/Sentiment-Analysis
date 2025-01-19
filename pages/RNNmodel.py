@@ -62,7 +62,7 @@ def main():
 
     # Step 3: Review Sentiment Analysis
     st.header("Step 3: Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product:")
+    user_review = st.text_input("Enter your review about the product (excluding negation and adjective words):")
     if user_review:
         corrected_review = correct_spelling(user_review)
         if corrected_review != user_review:
