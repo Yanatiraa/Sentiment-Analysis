@@ -47,11 +47,13 @@ def main():
         "Functionality": ["Suitable", "Unsuitable"]
     }
 
-    # Initialize user_choices dictionary at the same level as other statements
     user_choices = {}
-
     for feature, options in features.items():
-        user_choices[feature] = st.radio(f"{feature}:", options, index=0)
+        include_feature = st.checkbox(f"Include {feature}", value=False)
+        if include_feature:
+            user_choices[feature] = st.radio(f"{feature}:", options, index=0)
+        else:
+            user_choices[feature] = None
 
     # Store user choices in a database (here using a CSV for simplicity)
     if st.button("Submit Feature Selection"):
