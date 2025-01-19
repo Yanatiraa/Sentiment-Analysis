@@ -2,16 +2,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from spellchecker import SpellChecker
 import os
 
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    with open("tfidf_vectorizer.pkl", "rb") as handle:
+    with open("tokenizer xgb.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
-    with open("xgb_model.pkl", "rb") as model_file:
-        model = pickle.load(model_file)
+    model = load_model("xgboost_sentiment_model.pkl")
     return tokenizer, model
 
 # Preprocessing function
@@ -92,19 +93,19 @@ def main():
 
         if st.button("Analyze Sentiment"):
             try:
-                processed_text = preprocess_text(corrected_review)
-                transformed_text = tokenizer.transform([processed_text])
-                prediction = model.predict(transformed_text)[0]
+                seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
+                padded_seq = pad_sequences(seq, maxlen=100)
+                prediction = model.predict(padded_seq)[0][0]
                 sentiment = "Positive" if prediction > 0.5 else "Negative"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
-    # Section 4: Product Image Upload
+# Section 4: Product Image Upload
     st.header("Upload Product Image")
     uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
     if uploaded_image:
         st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
 
-if __name__ == "__main__":
+if name == "main":
     main()
