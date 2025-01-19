@@ -37,8 +37,13 @@ def main():
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
-    # Section 1: Feature Selection
-    st.header("Feature Selection")
+    # Section 1: Product Selection
+    st.header("Step 1: Choose the Product")
+    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
+    selected_product = st.selectbox("Select the product type:", product_types)
+
+    # Section 2: Feature Selection
+    st.header("Step 2: Feature Selection")
     features = {
         "Sizing": ["True to Size", "Too Small", "Too Large"],
         "Quality": ["Good Quality", "Bad Quality"],
@@ -56,34 +61,35 @@ def main():
             user_choices[feature] = None
 
     # Store user choices in a database (here using a CSV for simplicity)
-    if st.button("Submit Feature Selection"):
+    if st.button("Submit Product and Feature Selection"):
         if not os.path.exists("user_choices.csv"):
-            df = pd.DataFrame(columns=["Feature", "Choice"])
+            df = pd.DataFrame(columns=["Product", "Feature", "Choice"])
         else:
             df = pd.read_csv("user_choices.csv")
 
         for feature, choice in user_choices.items():
             if choice:
-                df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice]})])
+                df = pd.concat([df, pd.DataFrame({"Product": [selected_product], "Feature": [feature], "Choice": [choice]})])
         df.to_csv("user_choices.csv", index=False)
-        st.success("Your feature choices have been recorded!")
+        st.success(f"Your selection for {selected_product} has been recorded!")
 
-    # Section 2: Recommendations and Reminders
+    # Section 3: Recommendations and Reminders
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
+        product_data = df[df["Product"] == selected_product]
+        positive_features = product_data[product_data["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+        negative_features = product_data[product_data["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
 
         if not positive_features.empty:
-            st.write("**Recommendations for Marketing:**")
+            st.write(f"**Recommendations for {selected_product}:**")
             st.write(positive_features["Choice"].value_counts().index[0])
 
         if not negative_features.empty:
-            st.write("**Reminders for Improvement:**")
+            st.write(f"**Reminders for {selected_product}:**")
             st.write(negative_features["Choice"].value_counts().index[0])
 
-    # Section 3: Review Sentiment Analysis
+    # Section 4: Review Sentiment Analysis
     st.header("Review Sentiment Analysis")
     user_review = st.text_input("Enter your review about the product:")
     if user_review:
@@ -101,7 +107,7 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
-    # Section 4: Product Image Upload
+    # Section 5: Product Image Upload
     st.header("Upload Product Image")
     uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
     if uploaded_image:
