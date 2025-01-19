@@ -99,6 +99,21 @@ def main():
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
 
+            # Perform Sentiment Analysis
+            try:
+                seq = tokenizer.texts_to_sequences([preprocess_text(user_review)])
+                padded_seq = pad_sequences(seq, maxlen=100)
+                prediction = model.predict(padded_seq)[0][0]
+                sentiment = "Positive" if prediction > 0.5 else "Negative"
+                st.header("Review Sentiment Analysis Result")
+                st.success(f"The sentiment of your review is: {sentiment}")
+            except Exception as e:
+                st.error(f"An error occurred during sentiment analysis: {e}")
+
+            # Display Uploaded Image
+            st.header("Uploaded Product Image")
+            st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
+
             # Display Recommendations and Reminders
             st.header(f"Recommendations and Reminders for {selected_product}")
             positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
