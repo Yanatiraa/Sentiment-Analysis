@@ -2,17 +2,16 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import joblib
 from spellchecker import SpellChecker
 import os
 
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    with open("tokenizer xgb.pkl", "rb") as handle:
+    with open("tokenizer_xgb.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
-    model = load_model("xgboost_sentiment_model.pkl")
+    model = joblib.load("xgboost_sentiment_model.pkl")
     return tokenizer, model
 
 # Preprocessing function
@@ -95,17 +94,17 @@ def main():
             try:
                 seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
                 padded_seq = pad_sequences(seq, maxlen=100)
-                prediction = model.predict(padded_seq)[0][0]
+                prediction = model.predict(padded_seq)
                 sentiment = "Positive" if prediction > 0.5 else "Negative"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
-# Section 4: Product Image Upload
+    # Section 4: Product Image Upload
     st.header("Upload Product Image")
     uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
     if uploaded_image:
         st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
 
-if name == "main":
+if __name__ == "__main__":
     main()
