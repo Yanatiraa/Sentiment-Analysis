@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import pickle
-from sklearn.feature_extraction.text import TfidfVectorizer
 from spellchecker import SpellChecker
-from sklearn.externals import joblib  # Use joblib for loading the XGBoost model
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.externals import joblib  # Use joblib for XGBoost model
 import os
 
 # Load Model and TfidfVectorizer
@@ -19,9 +18,9 @@ def load_resources():
 def preprocess_text(text):
     import re
     text = text.lower()
-    text = re.sub(r'<.*?>', '', text)
-    text = re.sub(r'[^\w\s]', '', text)
-    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    text = re.sub(r'\d+', '', text)  # Remove digits
     return text
 
 # Spell correction function
@@ -49,9 +48,9 @@ def main():
             try:
                 # Preprocess and transform the input text
                 processed_review = preprocess_text(corrected_review)
-                vectorized_review = vectorizer.transform([processed_review])
-                prediction = model.predict(vectorized_review)[0]
-                sentiment = "Positive" if prediction == 1 else "Negative"
+                vectorized_review = vectorizer.transform([processed_review])  # Correctly transform using TfidfVectorizer
+                prediction = model.predict(vectorized_review)[0]  # Get the prediction
+                sentiment = "Positive" if prediction == 1 else "Negative"  # Map the prediction to sentiment
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
