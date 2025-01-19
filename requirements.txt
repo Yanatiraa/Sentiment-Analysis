@@ -6,5 +6,3 @@ nltk
 matplotlib
 seaborn
 pyspellchecker
-scikit-learn
-xgboost
