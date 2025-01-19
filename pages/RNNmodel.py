@@ -2,55 +2,51 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from urllib.request import urlopen
-from nltk.corpus import stopwords
-from nltk.stem import SnowballStemmer
 from spellchecker import SpellChecker
-import re
-import os
-import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 
-# URLs for the updated model and tokenizer
-MODEL_URL = "https://raw.githubusercontent.com/your_username/your_repo/main/xgb_model.pkl"
-TOKENIZER_URL = "https://raw.githubusercontent.com/your_username/your_repo/main/tfidf_vectorizer.pkl"
+# Paths to local model and tokenizer files
+LOCAL_MODEL_PATH = "xgb_model.pkl"
+LOCAL_TOKENIZER_PATH = "tfidf_vectorizer.pkl"
 
 # Load Model and Tokenizer
 @st.cache_resource
 def load_resources():
-    with urlopen(TOKENIZER_URL) as tokenizer_file:
-        tfidf_vectorizer = joblib.load(tokenizer_file)
-    with urlopen(MODEL_URL) as model_file:
-        xgb_model = joblib.load(model_file)
-    return tfidf_vectorizer, xgb_model
-
-# Download and cache stopwords
-@st.cache_resource
-def download_stopwords():
-    nltk.download('stopwords')
-    return set(stopwords.words('english'))
-
-# Initialize stopwords and stemmer
-stop = download_stopwords()
-stemmer = SnowballStemmer('english')
+    try:
+        tfidf_vectorizer = joblib.load(LOCAL_TOKENIZER_PATH)
+        xgb_model = joblib.load(LOCAL_MODEL_PATH)
+        return tfidf_vectorizer, xgb_model
+    except FileNotFoundError as e:
+        st.error(f"File not found: {e}")
+        return None, None
 
 # Preprocessing function
 def preprocess_text(text):
+    import re
     text = text.lower()
-    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
-    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
-    text = " ".join([stemmer.stem(word) for word in text.split() if word not in stop])
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\d+', '', text)
     return text
 
 # Spell correction function
 def correct_spelling(text):
     spell = SpellChecker()
-    corrected = " ".join([spell.correction(word) if word not in spell.known([word]) else word for word in text.split()])
+    corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
 # Main Streamlit Application
 def main():
-    # Load TF-IDF vectorizer and XGBoost model
+    # Load tokenizer and model
     tfidf_vectorizer, xgb_model = load_resources()
+
+    if not tfidf_vectorizer or not xgb_model:
+        st.error("Failed to load model or tokenizer. Please check the files.")
+        return
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
@@ -89,8 +85,8 @@ def main():
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
 
         if not positive_features.empty:
             st.write("**Recommendations for Marketing:**")
@@ -102,7 +98,7 @@ def main():
 
     # Section 3: Review Sentiment Analysis
     st.header("Review Sentiment Analysis")
-    user_review = st.text_area("Enter your review about the product:")
+    user_review = st.text_input("Enter your review about the product:")
     if user_review:
         corrected_review = correct_spelling(user_review)
         if corrected_review != user_review:
@@ -110,10 +106,9 @@ def main():
 
         if st.button("Analyze Sentiment"):
             try:
-                processed_review = preprocess_text(corrected_review)
-                input_tfidf = tfidf_vectorizer.transform([processed_review])
-                prediction = xgb_model.predict(input_tfidf)[0]
-                sentiment = "Good" if prediction == 1 else "Bad"
+                seq = tfidf_vectorizer.transform([preprocess_text(corrected_review)])
+                prediction = xgb_model.predict(seq)[0]
+                sentiment = "Positive" if prediction == 1 else "Negative"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
