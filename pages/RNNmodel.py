@@ -10,8 +10,8 @@ import os
 def load_resources():
     with open("tfidf_vectorizer.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
-    with open("xgb_model.pkl", "rb") as handle:
-        model = pickle.load(handle)
+    with open("xgb_model.pkl", "rb") as model_file:
+        model = pickle.load(model_file)
     return tokenizer, model
 
 # Preprocessing function
@@ -71,8 +71,8 @@ def main():
     st.header("Recommendations and Reminders")
     if os.path.exists("user_choices.csv"):
         df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
 
         if not positive_features.empty:
             st.write("Recommendations for Marketing:")
@@ -92,9 +92,9 @@ def main():
 
         if st.button("Analyze Sentiment"):
             try:
-                preprocessed_text = preprocess_text(corrected_review)
-                features = tokenizer.transform([preprocessed_text])
-                prediction = model.predict(features)[0]
+                processed_text = preprocess_text(corrected_review)
+                transformed_text = tokenizer.transform([processed_text])
+                prediction = model.predict(transformed_text)[0]
                 sentiment = "Positive" if prediction > 0.5 else "Negative"
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
