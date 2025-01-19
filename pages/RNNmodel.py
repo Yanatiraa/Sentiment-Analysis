@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import pickle
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -60,8 +59,31 @@ def main():
         else:
             user_choices[feature] = None
 
-    # Store user choices in a database (here using a CSV for simplicity)
-    if st.button("Submit Product and Feature Selection"):
+    # Section 3: Review Input
+    st.header("Step 3: Review Input")
+    user_review = st.text_input("Enter your review about the product:")
+
+    # Section 4: Product Image Upload
+    st.header("Step 4: Upload Product Image")
+    uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
+
+    # Section 5: Submit Button
+    if st.button("Submit"):
+        # Validate inputs
+        if not selected_product:
+            st.error("Please select a product type.")
+            return
+        if not any(user_choices.values()):
+            st.error("Please select at least one feature.")
+            return
+        if not user_review:
+            st.error("Please enter a review about the product.")
+            return
+        if not uploaded_image:
+            st.error("Please upload an image of the product.")
+            return
+
+        # Store selections in the database (CSV file for simplicity)
         if not os.path.exists("user_choices.csv"):
             df = pd.DataFrame(columns=["Product", "Feature", "Choice"])
         else:
@@ -71,46 +93,17 @@ def main():
             if choice:
                 df = pd.concat([df, pd.DataFrame({"Product": [selected_product], "Feature": [feature], "Choice": [choice]})])
         df.to_csv("user_choices.csv", index=False)
-        st.success(f"Your selection for {selected_product} has been recorded!")
 
-    # Section 3: Recommendations and Reminders
-    st.header("Recommendations and Reminders")
-    if os.path.exists("user_choices.csv"):
-        df = pd.read_csv("user_choices.csv")
-        product_data = df[df["Product"] == selected_product]
-        positive_features = product_data[product_data["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-        negative_features = product_data[product_data["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
-
-        if not positive_features.empty:
-            st.write(f"**Recommendations for {selected_product}:**")
-            st.write(positive_features["Choice"].value_counts().index[0])
-
-        if not negative_features.empty:
-            st.write(f"**Reminders for {selected_product}:**")
-            st.write(negative_features["Choice"].value_counts().index[0])
-
-    # Section 4: Review Sentiment Analysis
-    st.header("Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product:")
-    if user_review:
+        # Process review sentiment
         corrected_review = correct_spelling(user_review)
-        if corrected_review != user_review:
-            st.warning(f"Did you mean: {corrected_review}?")
+        seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
+        padded_seq = pad_sequences(seq, maxlen=100)
+        prediction = model.predict(padded_seq)[0][0]
+        sentiment = "Positive" if prediction > 0.5 else "Negative"
 
-        if st.button("Analyze Sentiment"):
-            try:
-                seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
-                padded_seq = pad_sequences(seq, maxlen=100)
-                prediction = model.predict(padded_seq)[0][0]
-                sentiment = "Positive" if prediction > 0.5 else "Negative"
-                st.success(f"The sentiment of your review is: {sentiment}")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-
-    # Section 5: Product Image Upload
-    st.header("Upload Product Image")
-    uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
-    if uploaded_image:
+        # Display success message and results
+        st.success(f"Your selection for {selected_product} has been recorded!")
+        st.info(f"The sentiment of your review is: {sentiment}")
         st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
 
 if __name__ == "__main__":
