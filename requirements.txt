@@ -1,10 +1,10 @@
 streamlit
-numpy
-pandas
-scikit-learn
-xgboost
 tensorflow
-pyspellchecker
+pandas
+numpy
 nltk
 matplotlib
 seaborn
+pyspellchecker
+scikit-learn
+xgboost
