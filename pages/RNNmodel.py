@@ -79,14 +79,11 @@ def main():
     if mode == "Upload Image":
         uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
         if uploaded_image:
-            st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
+            st.image(uploaded_image, caption="Uploaded Product Image (Preview)", use_container_width=True)
     elif mode == "Take a Picture":
         captured_image = st.camera_input("Take a picture")
         if captured_image:
-            st.image(captured_image, caption="Captured Product Image", use_container_width=True)
-            # Save the captured image (optional)
-            with open("captured_image.jpg", "wb") as f:
-                f.write(captured_image.getbuffer())
+            st.image(captured_image, caption="Captured Product Image (Preview)", use_container_width=True)
 
     # Submit Button
     if st.button("Submit"):
@@ -112,6 +109,13 @@ def main():
                     df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice], "Review": [user_review]})])
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
+
+            # Display Uploaded or Captured Image After Submission
+            st.header("Uploaded or Captured Product Image")
+            if uploaded_image:
+                st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
+            elif captured_image:
+                st.image(captured_image, caption="Captured Product Image", use_container_width=True)
 
             # Perform Sentiment Analysis
             try:
