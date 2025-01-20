@@ -31,15 +31,29 @@ def correct_spelling(text):
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
-# Function to calculate feature percentages
-def calculate_feature_percentages(file_name):
-    if not os.path.exists(file_name):
-        return None
-    
-    df = pd.read_csv(file_name)
-    total_count = len(df)
-    feature_percentages = df["Choice"].value_counts(normalize=True) * 100
-    return feature_percentages
+# Function to calculate insights from the database
+def calculate_insights():
+    insights = {"recommendations": [], "reminders": []}
+    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
+
+    for product in product_types:
+        file_name = f"{product}_choices.csv"
+        if not os.path.exists(file_name):
+            continue
+        
+        df = pd.read_csv(file_name)
+        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+
+        if not positive_features.empty:
+            most_common_positive = positive_features["Choice"].value_counts().idxmax()
+            insights["recommendations"].append(f"Consider marketing {product} based on {most_common_positive.lower()}.")
+
+        if not negative_features.empty:
+            most_common_negative = negative_features["Choice"].value_counts().idxmax()
+            insights["reminders"].append(f"Consider improving {product} based on {most_common_negative.lower()}.")
+
+    return insights
 
 # Main Streamlit Application
 def main():
@@ -48,22 +62,23 @@ def main():
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
-    # Display aggregated feature percentages for the selected product
+    # Feature Insights Section
     st.header("Feature Insights")
-    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
-    for product in product_types:
-        file_name = f"{product}_choices.csv"
-        percentages = calculate_feature_percentages(file_name)
-        if percentages is not None:
-            st.subheader(f"{product} Insights:")
-            for choice, percentage in percentages.items():
-                st.write(f"- {choice}: {percentage:.2f}%")
-        else:
-            st.subheader(f"{product} Insights:")
-            st.write("No data available.")
+    insights = calculate_insights()
+
+    if insights["recommendations"]:
+        st.subheader("Recommendations:")
+        for rec in insights["recommendations"]:
+            st.write(f"- {rec}")
+
+    if insights["reminders"]:
+        st.subheader("Reminders:")
+        for rem in insights["reminders"]:
+            st.write(f"- {rem}")
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
+    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
     selected_product = st.selectbox("Select the product type:", product_types, index=0)
 
     # Step 2: Feature Selection
@@ -128,18 +143,6 @@ def main():
                     df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice], "Review": [user_review]})])
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
-
-            # Display Recommendations and Reminders
-            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
-
-            if not positive_features.empty:
-                st.subheader("Recommendations:")
-                st.write(positive_features["Choice"].value_counts().index[0])
-
-            if not negative_features.empty:
-                st.subheader("Reminders:")
-                st.write(negative_features["Choice"].value_counts().index[0])
 
             # Perform Sentiment Analysis
             try:
