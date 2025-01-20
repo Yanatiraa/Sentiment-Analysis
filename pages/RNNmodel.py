@@ -6,6 +6,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from spellchecker import SpellChecker
 import os
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import cv2
+from PIL import Image
 
 # Load Model and Tokenizer
 @st.cache_resource
@@ -29,6 +32,12 @@ def correct_spelling(text):
     spell = SpellChecker()
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
+
+# Custom video transformer for capturing frames
+class VideoCaptureTransformer(VideoTransformerBase):
+    def transform(self, frame):
+        self.frame = frame.to_ndarray(format="bgr24")
+        return frame
 
 # Main Streamlit Application
 def main():
@@ -68,11 +77,25 @@ def main():
         if corrected_review != user_review:
             st.warning(f"Did you mean: {corrected_review}?")
 
-    # Step 4: Product Image Upload
-    st.header("Step 4: Upload Product Image")
-    uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
-    if uploaded_image:
-        st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
+    # Step 4: Product Image Upload or Real-Time Capture
+    st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
+    mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
+    
+    uploaded_image = None
+    captured_image = None
+
+    if mode == "Upload Image":
+        uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
+        if uploaded_image:
+            st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
+    elif mode == "Take a Picture":
+        webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoCaptureTransformer)
+        if webrtc_ctx and webrtc_ctx.video_transformer:
+            if st.button("Capture"):
+                frame = webrtc_ctx.video_transformer.frame
+                if frame is not None:
+                    captured_image = Image.fromarray(frame)
+                    st.image(captured_image, caption="Captured Product Image", use_container_width=True)
 
     # Submit Button
     if st.button("Submit"):
@@ -83,8 +106,8 @@ def main():
             st.error("Please select at least one feature.")
         elif not user_review:
             st.error("Please provide a review.")
-        elif not uploaded_image:
-            st.error("Please upload an image of the product.")
+        elif not (uploaded_image or captured_image):
+            st.error("Please upload or capture an image of the product.")
         else:
             # Store data in product-specific database
             file_name = f"{selected_product}_choices.csv"
@@ -109,10 +132,6 @@ def main():
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred during sentiment analysis: {e}")
-
-            # Display Uploaded Image
-            st.header("Uploaded Product Image")
-            st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
 
             # Display Recommendations and Reminders
             st.header(f"Recommendations and Reminders for {selected_product}")
