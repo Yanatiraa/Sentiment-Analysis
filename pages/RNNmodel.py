@@ -36,12 +36,16 @@ def main():
     # Load tokenizer and model
     tokenizer, model = load_resources()
 
+    # Initialize session state variables
+    if "submitted" not in st.session_state:
+        st.session_state["submitted"] = False
+
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
     product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
-    selected_product = st.selectbox("Select the product type:", product_types, index=0)
+    selected_product = st.selectbox("Select the product type:", product_types, index=0, key="product")
 
     # Step 2: Feature Selection
     st.header("Step 2: Feature Selection")
@@ -55,15 +59,15 @@ def main():
 
     user_choices = {}
     for feature, options in features.items():
-        include_feature = st.checkbox(f"Include {feature}", value=False)
+        include_feature = st.checkbox(f"Include {feature}", value=False, key=f"{feature}_include")
         if include_feature:
-            user_choices[feature] = st.radio(f"{feature}:", options, index=0)
+            user_choices[feature] = st.radio(f"{feature}:", options, index=0, key=f"{feature}_choice")
         else:
             user_choices[feature] = None
 
     # Step 3: Review Sentiment Analysis
     st.header("Step 3: Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product (excluding negation and adjective words):")
+    user_review = st.text_input("Enter your review about the product (excluding negation and adjective words):", key="review")
     if user_review:
         corrected_review = correct_spelling(user_review)
         if corrected_review != user_review:
@@ -71,15 +75,15 @@ def main():
 
     # Step 4: Product Image Upload or Real-Time Capture
     st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
-    mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
+    mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"), key="image_mode")
     
     uploaded_image = None
     captured_image = None
 
     if mode == "Upload Image":
-        uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
+        uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"], key="uploaded_image")
     elif mode == "Take a Picture":
-        captured_image = st.camera_input("Take a picture")
+        captured_image = st.camera_input("Take a picture", key="captured_image")
 
     # Submit Button
     if st.button("Submit"):
@@ -134,6 +138,14 @@ def main():
                 st.image(uploaded_image, use_container_width=True)
             elif captured_image:
                 st.image(captured_image, use_container_width=True)
+
+            # Reset UI components
+            st.session_state["submitted"] = True
+            for key in ["product", "review", "image_mode", "uploaded_image", "captured_image"]:
+                st.session_state[key] = None
+            for feature in features.keys():
+                st.session_state[f"{feature}_include"] = False
+                st.session_state[f"{feature}_choice"] = None
 
 if __name__ == "__main__":
     main()
