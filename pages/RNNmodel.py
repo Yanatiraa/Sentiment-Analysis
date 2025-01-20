@@ -31,25 +31,15 @@ def correct_spelling(text):
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
-# Display feature summary
-def display_feature_summary(product):
-    file_name = f"{product}_choices.csv"
-    if os.path.exists(file_name):
-        df = pd.read_csv(file_name)
-        st.subheader(f"Feature Summary for {product}")
-        
-        if not df.empty:
-            feature_counts = df.groupby(["Feature", "Choice"]).size().reset_index(name="Count")
-            total_choices = feature_counts["Count"].sum()
-            
-            for feature in feature_counts["Feature"].unique():
-                st.markdown(f"**{feature}:**")
-                feature_data = feature_counts[feature_counts["Feature"] == feature]
-                for _, row in feature_data.iterrows():
-                    percentage = (row["Count"] / total_choices) * 100
-                    st.write(f"- {row['Choice']}: Level {int(percentage // 25 + 1)}, {percentage:.2f}%")
-    else:
-        st.info(f"No data available for {product} yet.")
+# Function to calculate feature percentages
+def calculate_feature_percentages(file_name):
+    if not os.path.exists(file_name):
+        return None
+    
+    df = pd.read_csv(file_name)
+    total_count = len(df)
+    feature_percentages = df["Choice"].value_counts(normalize=True) * 100
+    return feature_percentages
 
 # Main Streamlit Application
 def main():
@@ -58,11 +48,19 @@ def main():
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
-    # Display data for all products
-    st.subheader("Aggregated Feature Selections")
+    # Display aggregated feature percentages for the selected product
+    st.header("Feature Insights")
     product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
     for product in product_types:
-        display_feature_summary(product)
+        file_name = f"{product}_choices.csv"
+        percentages = calculate_feature_percentages(file_name)
+        if percentages is not None:
+            st.subheader(f"{product} Insights:")
+            for choice, percentage in percentages.items():
+                st.write(f"- {choice}: {percentage:.2f}%")
+        else:
+            st.subheader(f"{product} Insights:")
+            st.write("No data available.")
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
@@ -130,6 +128,18 @@ def main():
                     df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice], "Review": [user_review]})])
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
+
+            # Display Recommendations and Reminders
+            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+
+            if not positive_features.empty:
+                st.subheader("Recommendations:")
+                st.write(positive_features["Choice"].value_counts().index[0])
+
+            if not negative_features.empty:
+                st.subheader("Reminders:")
+                st.write(negative_features["Choice"].value_counts().index[0])
 
             # Perform Sentiment Analysis
             try:
