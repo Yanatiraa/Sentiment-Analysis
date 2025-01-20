@@ -31,6 +31,26 @@ def correct_spelling(text):
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
+# Display feature summary
+def display_feature_summary(product):
+    file_name = f"{product}_choices.csv"
+    if os.path.exists(file_name):
+        df = pd.read_csv(file_name)
+        st.subheader(f"Feature Summary for {product}")
+        
+        if not df.empty:
+            feature_counts = df.groupby(["Feature", "Choice"]).size().reset_index(name="Count")
+            total_choices = feature_counts["Count"].sum()
+            
+            for feature in feature_counts["Feature"].unique():
+                st.markdown(f"**{feature}:**")
+                feature_data = feature_counts[feature_counts["Feature"] == feature]
+                for _, row in feature_data.iterrows():
+                    percentage = (row["Count"] / total_choices) * 100
+                    st.write(f"- {row['Choice']}: Level {int(percentage // 25 + 1)}, {percentage:.2f}%")
+    else:
+        st.info(f"No data available for {product} yet.")
+
 # Main Streamlit Application
 def main():
     # Load tokenizer and model
@@ -38,39 +58,14 @@ def main():
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
-    # Aggregate and display selected features
+    # Display data for all products
     st.subheader("Aggregated Feature Selections")
-    product_files = [f for f in os.listdir() if f.endswith("_choices.csv")]
-
-    if product_files:
-        all_data = pd.DataFrame()
-        for file in product_files:
-            df = pd.read_csv(file)
-            all_data = pd.concat([all_data, df], ignore_index=True)
-
-        # Calculate percentages for each feature and choice
-        if not all_data.empty:
-            feature_percentages = (
-                all_data.groupby(["Feature", "Choice"])
-                .size()
-                .reset_index(name="Count")
-            )
-            feature_percentages["Percentage"] = (
-                feature_percentages["Count"] / len(all_data) * 100
-            )
-
-            for feature in all_data["Feature"].unique():
-                st.write(f"**{feature}**:")
-                feature_data = feature_percentages[feature_percentages["Feature"] == feature]
-                for _, row in feature_data.iterrows():
-                    st.write(f"{row['Choice']}: {row['Percentage']:.2f}%")
-
-    else:
-        st.write("No data available yet.")
+    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
+    for product in product_types:
+        display_feature_summary(product)
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
-    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
     selected_product = st.selectbox("Select the product type:", product_types, index=0)
 
     # Step 2: Feature Selection
