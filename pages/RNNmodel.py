@@ -31,29 +31,24 @@ def correct_spelling(text):
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
-# Function to calculate insights from the database
-def calculate_insights():
-    insights = {"recommendations": [], "reminders": []}
-    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
-
+# Function to calculate product insights
+def calculate_product_insights(product_types):
+    insights = {"positive": {}, "negative": {}}
     for product in product_types:
         file_name = f"{product}_choices.csv"
-        if not os.path.exists(file_name):
-            continue
-        
-        df = pd.read_csv(file_name)
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+        if os.path.exists(file_name):
+            df = pd.read_csv(file_name)
+            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]["Choice"]
+            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]["Choice"]
 
-        if not positive_features.empty:
-            most_common_positive = positive_features["Choice"].value_counts().idxmax()
-            insights["recommendations"].append(f"Consider marketing {product} based on {most_common_positive.lower()}.")
+            insights["positive"][product] = positive_features.value_counts().sum()
+            insights["negative"][product] = negative_features.value_counts().sum()
 
-        if not negative_features.empty:
-            most_common_negative = negative_features["Choice"].value_counts().idxmax()
-            insights["reminders"].append(f"Consider improving {product} based on {most_common_negative.lower()}.")
+    most_positive = max(insights["positive"], key=insights["positive"].get, default=None)
+    most_negative = max(insights["negative"], key=insights["negative"].get, default=None)
 
-    return insights
+    return most_positive, insights["positive"].get(most_positive, 0), \
+           most_negative, insights["negative"].get(most_negative, 0)
 
 # Main Streamlit Application
 def main():
@@ -62,23 +57,33 @@ def main():
 
     st.title("Sentiment Analysis of Fashion Product Reviews")
 
-    # Feature Insights Section
+    # Display aggregated feature percentages for the selected product
     st.header("Feature Insights")
-    insights = calculate_insights()
+    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
+    for product in product_types:
+        file_name = f"{product}_choices.csv"
+        if os.path.exists(file_name):
+            df = pd.read_csv(file_name)
+            feature_percentages = df["Choice"].value_counts(normalize=True) * 100
+            st.subheader(f"{product} Insights:")
+            for choice, percentage in feature_percentages.items():
+                st.write(f"- {choice}: {percentage:.2f}%")
+        else:
+            st.subheader(f"{product} Insights:")
+            st.write("No data available.")
 
-    if insights["recommendations"]:
+    # Calculate and display overall recommendations and reminders
+    most_positive, positive_count, most_negative, negative_count = calculate_product_insights(product_types)
+    if most_positive:
         st.subheader("Recommendations:")
-        for rec in insights["recommendations"]:
-            st.write(f"- {rec}")
+        st.write(f"You can do a marketing for {most_positive} based on its positive features.")
 
-    if insights["reminders"]:
+    if most_negative:
         st.subheader("Reminders:")
-        for rem in insights["reminders"]:
-            st.write(f"- {rem}")
+        st.write(f"You can do an improvement for {most_negative} based on its negative features.")
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
-    product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
     selected_product = st.selectbox("Select the product type:", product_types, index=0)
 
     # Step 2: Feature Selection
@@ -110,7 +115,7 @@ def main():
     # Step 4: Product Image Upload or Real-Time Capture
     st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
     mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
-    
+
     uploaded_image = None
     captured_image = None
 
