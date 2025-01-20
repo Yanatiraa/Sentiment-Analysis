@@ -33,7 +33,7 @@ def correct_spelling(text):
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
-# Custom video transformer for capturing frames
+# Custom video transformer for capturing a snapshot
 class VideoCaptureTransformer(VideoTransformerBase):
     def __init__(self):
         self.frame = None
@@ -83,16 +83,14 @@ def main():
     # Step 4: Product Image Upload or Real-Time Capture
     st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
     mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
-
+    
     uploaded_image = None
     captured_image = None
-    captured_frame = st.empty()
 
     if mode == "Upload Image":
         uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
         if uploaded_image:
             st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
-
     elif mode == "Take a Picture":
         webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoCaptureTransformer)
         if webrtc_ctx and webrtc_ctx.video_transformer:
@@ -100,7 +98,9 @@ def main():
                 frame = webrtc_ctx.video_transformer.frame
                 if frame is not None:
                     captured_image = Image.fromarray(frame)
-                    captured_frame.image(captured_image, caption="Captured Product Image", use_container_width=True)
+                    st.image(captured_image, caption="Captured Product Image", use_container_width=True)
+                    # Save the captured image (optional)
+                    captured_image.save("captured_image.jpg")
 
     # Submit Button
     if st.button("Submit"):
