@@ -36,16 +36,42 @@ def main():
     # Load tokenizer and model
     tokenizer, model = load_resources()
 
-    # Initialize session state variables
-    if "submitted" not in st.session_state:
-        st.session_state["submitted"] = False
-
     st.title("Sentiment Analysis of Fashion Product Reviews")
+
+    # Aggregate and display selected features
+    st.subheader("Aggregated Feature Selections")
+    product_files = [f for f in os.listdir() if f.endswith("_choices.csv")]
+
+    if product_files:
+        all_data = pd.DataFrame()
+        for file in product_files:
+            df = pd.read_csv(file)
+            all_data = pd.concat([all_data, df], ignore_index=True)
+
+        # Calculate percentages for each feature and choice
+        if not all_data.empty:
+            feature_percentages = (
+                all_data.groupby(["Feature", "Choice"])
+                .size()
+                .reset_index(name="Count")
+            )
+            feature_percentages["Percentage"] = (
+                feature_percentages["Count"] / len(all_data) * 100
+            )
+
+            for feature in all_data["Feature"].unique():
+                st.write(f"**{feature}**:")
+                feature_data = feature_percentages[feature_percentages["Feature"] == feature]
+                for _, row in feature_data.iterrows():
+                    st.write(f"{row['Choice']}: {row['Percentage']:.2f}%")
+
+    else:
+        st.write("No data available yet.")
 
     # Step 1: Product Selection
     st.header("Step 1: Choose the Product")
     product_types = ["Dresses", "Accessories", "Shoes", "Sportswear", "Cosmetics", "Jewellery", "Textiles", "Watches"]
-    selected_product = st.selectbox("Select the product type:", product_types, index=0, key="product")
+    selected_product = st.selectbox("Select the product type:", product_types, index=0)
 
     # Step 2: Feature Selection
     st.header("Step 2: Feature Selection")
@@ -59,15 +85,15 @@ def main():
 
     user_choices = {}
     for feature, options in features.items():
-        include_feature = st.checkbox(f"Include {feature}", value=False, key=f"{feature}_include")
+        include_feature = st.checkbox(f"Include {feature}", value=False)
         if include_feature:
-            user_choices[feature] = st.radio(f"{feature}:", options, index=0, key=f"{feature}_choice")
+            user_choices[feature] = st.radio(f"{feature}:", options, index=0)
         else:
             user_choices[feature] = None
 
     # Step 3: Review Sentiment Analysis
     st.header("Step 3: Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product (excluding negation and adjective words):", key="review")
+    user_review = st.text_input("Enter your review about the product (excluding negation and adjective words):")
     if user_review:
         corrected_review = correct_spelling(user_review)
         if corrected_review != user_review:
@@ -75,15 +101,15 @@ def main():
 
     # Step 4: Product Image Upload or Real-Time Capture
     st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
-    mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"), key="image_mode")
+    mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
     
     uploaded_image = None
     captured_image = None
 
     if mode == "Upload Image":
-        uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"], key="uploaded_image")
+        uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
     elif mode == "Take a Picture":
-        captured_image = st.camera_input("Take a picture", key="captured_image")
+        captured_image = st.camera_input("Take a picture")
 
     # Submit Button
     if st.button("Submit"):
@@ -110,18 +136,6 @@ def main():
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
 
-            # Display Recommendations and Reminders
-            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
-
-            if not positive_features.empty:
-                st.subheader("Recommendations:")
-                st.write(positive_features["Choice"].value_counts().index[0])
-
-            if not negative_features.empty:
-                st.subheader("Reminders:")
-                st.write(negative_features["Choice"].value_counts().index[0])
-
             # Perform Sentiment Analysis
             try:
                 seq = tokenizer.texts_to_sequences([preprocess_text(user_review)])
@@ -138,14 +152,6 @@ def main():
                 st.image(uploaded_image, use_container_width=True)
             elif captured_image:
                 st.image(captured_image, use_container_width=True)
-
-            # Reset UI components
-            st.session_state["submitted"] = True
-            for key in ["product", "review", "image_mode", "uploaded_image", "captured_image"]:
-                st.session_state[key] = None
-            for feature in features.keys():
-                st.session_state[f"{feature}_include"] = False
-                st.session_state[f"{feature}_choice"] = None
 
 if __name__ == "__main__":
     main()
