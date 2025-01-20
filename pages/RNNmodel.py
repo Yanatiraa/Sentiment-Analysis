@@ -78,12 +78,8 @@ def main():
 
     if mode == "Upload Image":
         uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
-        if uploaded_image:
-            st.image(uploaded_image, caption="Uploaded Product Image (Preview)", use_container_width=True)
     elif mode == "Take a Picture":
         captured_image = st.camera_input("Take a picture")
-        if captured_image:
-            st.image(captured_image, caption="Captured Product Image (Preview)", use_container_width=True)
 
     # Submit Button
     if st.button("Submit"):
@@ -110,12 +106,17 @@ def main():
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
 
-            # Display Uploaded or Captured Image After Submission
-            st.header("Uploaded or Captured Product Image")
-            if uploaded_image:
-                st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
-            elif captured_image:
-                st.image(captured_image, caption="Captured Product Image", use_container_width=True)
+            # Display Recommendations and Reminders
+            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
+            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
+
+            if not positive_features.empty:
+                st.subheader("Recommendations:")
+                st.write(positive_features["Choice"].value_counts().index[0])
+
+            if not negative_features.empty:
+                st.subheader("Reminders:")
+                st.write(negative_features["Choice"].value_counts().index[0])
 
             # Perform Sentiment Analysis
             try:
@@ -123,23 +124,16 @@ def main():
                 padded_seq = pad_sequences(seq, maxlen=100)
                 prediction = model.predict(padded_seq)[0][0]
                 sentiment = "Positive" if prediction > 0.5 else "Negative"
-                st.header("Review Sentiment Analysis Result")
+                st.subheader("Sentiment Analysis Result:")
                 st.success(f"The sentiment of your review is: {sentiment}")
             except Exception as e:
                 st.error(f"An error occurred during sentiment analysis: {e}")
 
-            # Display Recommendations and Reminders
-            st.header(f"Recommendations and Reminders for {selected_product}")
-            positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable", na=False)]
-            negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable", na=False)]
-
-            if not positive_features.empty:
-                st.write("**Recommendations:**")
-                st.write(positive_features["Choice"].value_counts().index[0])
-
-            if not negative_features.empty:
-                st.write("**Reminders:**")
-                st.write(negative_features["Choice"].value_counts().index[0])
+            # Display Uploaded or Captured Image After Submission
+            if uploaded_image:
+                st.image(uploaded_image, use_container_width=True)
+            elif captured_image:
+                st.image(captured_image, use_container_width=True)
 
 if __name__ == "__main__":
     main()
