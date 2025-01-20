@@ -112,7 +112,7 @@ def main():
 
             # Display Uploaded Image
             st.header("Uploaded Product Image")
-            st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
+            st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
 
             # Display Recommendations and Reminders
             st.header(f"Recommendations and Reminders for {selected_product}")
