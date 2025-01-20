@@ -6,8 +6,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from spellchecker import SpellChecker
 import os
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import cv2
 from PIL import Image
 
 # Load Model and Tokenizer
@@ -32,15 +30,6 @@ def correct_spelling(text):
     spell = SpellChecker()
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
-
-# Custom video transformer for capturing a snapshot
-class VideoCaptureTransformer(VideoTransformerBase):
-    def __init__(self):
-        self.frame = None
-
-    def transform(self, frame):
-        self.frame = frame.to_ndarray(format="bgr24")
-        return frame
 
 # Main Streamlit Application
 def main():
@@ -92,15 +81,12 @@ def main():
         if uploaded_image:
             st.image(uploaded_image, caption="Uploaded Product Image", use_container_width=True)
     elif mode == "Take a Picture":
-        webrtc_ctx = webrtc_streamer(key="example", video_transformer_factory=VideoCaptureTransformer)
-        if webrtc_ctx and webrtc_ctx.video_transformer:
-            if st.button("Capture"):
-                frame = webrtc_ctx.video_transformer.frame
-                if frame is not None:
-                    captured_image = Image.fromarray(frame)
-                    st.image(captured_image, caption="Captured Product Image", use_container_width=True)
-                    # Save the captured image (optional)
-                    captured_image.save("captured_image.jpg")
+        captured_image = st.camera_input("Take a picture")
+        if captured_image:
+            st.image(captured_image, caption="Captured Product Image", use_container_width=True)
+            # Save the captured image (optional)
+            with open("captured_image.jpg", "wb") as f:
+                f.write(captured_image.getbuffer())
 
     # Submit Button
     if st.button("Submit"):
