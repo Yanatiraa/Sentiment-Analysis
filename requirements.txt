@@ -6,3 +6,6 @@ nltk
 matplotlib
 seaborn
 pyspellchecker
+streamlit-webrtc
+opencv-python-headless
+pillow
