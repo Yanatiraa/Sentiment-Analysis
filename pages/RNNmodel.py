@@ -5,6 +5,10 @@ import pickle
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from spellchecker import SpellChecker
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import SnowballStemmer
+import re
 import os
 from PIL import Image
 
@@ -16,22 +20,29 @@ def load_resources():
     model = load_model("rnn_sentiment_model.h5")
     return tokenizer, model
 
-# Preprocessing function
-def preprocess_text(text):
-    import re
+# Enhanced Preprocessing Function
+def preprocess_text_enhanced(text):
+    nltk.download('stopwords')
+    stop = set(stopwords.words('english'))
+    stemmer = SnowballStemmer('english')
+
+    # Lowercase, remove HTML, punctuation, digits
     text = text.lower()
     text = re.sub(r'<.*?>', '', text)
     text = re.sub(r'[^\w\s]', '', text)
     text = re.sub(r'\d+', '', text)
+
+    # Remove stopwords and apply stemming
+    text = " ".join([stemmer.stem(word) for word in text.split() if word not in stop])
     return text
 
-# Spell correction function
+# Spell Correction Function
 def correct_spelling(text):
     spell = SpellChecker()
     corrected = " ".join([spell.correction(word) for word in text.split()])
     return corrected
 
-# Function to calculate product insights
+# Function to Calculate Product Insights
 def calculate_product_insights(product_types):
     insights = {"positive": {}, "negative": {}}
     for product in product_types:
@@ -112,6 +123,18 @@ def main():
         if corrected_review != user_review:
             st.warning(f"Did you mean: {corrected_review}?")
 
+        try:
+            # Preprocess and predict sentiment
+            cleaned_review = preprocess_text_enhanced(corrected_review)
+            seq = tokenizer.texts_to_sequences([cleaned_review])
+            padded_seq = pad_sequences(seq, maxlen=100)
+            prediction = model.predict(padded_seq)[0][0]
+            sentiment = "Positive" if prediction > 0.7 else "Negative"
+            st.subheader("Sentiment Analysis Result:")
+            st.success(f"The sentiment of your review is: {sentiment}")
+        except Exception as e:
+            st.error(f"An error occurred during sentiment analysis: {e}")
+
     # Step 4: Product Image Upload or Real-Time Capture
     st.header("Step 4: Upload Product Image or Take a Picture in Real-Time")
     mode = st.radio("Choose an option:", ("Upload Image", "Take a Picture"))
@@ -148,17 +171,6 @@ def main():
                     df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice], "Review": [user_review]})])
             df.to_csv(file_name, index=False)
             st.success(f"Your selections for {selected_product} have been recorded!")
-
-            # Perform Sentiment Analysis
-            try:
-                seq = tokenizer.texts_to_sequences([preprocess_text(user_review)])
-                padded_seq = pad_sequences(seq, maxlen=100)
-                prediction = model.predict(padded_seq)[0][0]
-                sentiment = "Positive" if prediction > 0.5 else "Negative"
-                st.subheader("Sentiment Analysis Result:")
-                st.success(f"The sentiment of your review is: {sentiment}")
-            except Exception as e:
-                st.error(f"An error occurred during sentiment analysis: {e}")
 
             # Display Uploaded or Captured Image After Submission
             if uploaded_image:
