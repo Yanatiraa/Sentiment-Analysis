@@ -55,7 +55,7 @@ def main():
     # Load tokenizer and model
     tokenizer, model = load_resources()
 
-    st.title("Sentiment Analysis of Fashion Product Reviews👠")
+    st.title("Sentiment Analysis of Fashion Product Reviews👗")
 
     # Display aggregated feature percentages for the selected product
     st.header("Feature Insights")
